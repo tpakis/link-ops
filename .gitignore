@@ -1,0 +1,76 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+out/
+
+# Kotlin
+.kotlin/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.directory
+
+# Log files
+*.log
+logs/
+
+# Local configuration
+local.properties
+*.local
+
+# Claude Code / AI Assistant
+.claude/
+.claude*
+CLAUDE.md
+CLAUDE.local.md
+.cursorrules
+.aider*
+.continue/
+
+# Sensitive files
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+*.env
+.env.*
+secrets/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+
+# JPackage output
+*.dmg
+*.msi
+*.deb
+*.rpm
+*.app/
+
+# Compose Desktop
+composeApp/build/

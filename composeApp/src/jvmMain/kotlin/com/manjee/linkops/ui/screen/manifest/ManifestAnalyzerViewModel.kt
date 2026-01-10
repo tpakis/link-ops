@@ -1,0 +1,256 @@
+package com.manjee.linkops.ui.screen.manifest
+
+import com.manjee.linkops.di.AppContainer
+import com.manjee.linkops.domain.model.Device
+import com.manjee.linkops.domain.model.ManifestAnalysisResult
+import com.manjee.linkops.domain.repository.PackageFilter
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+
+/**
+ * UI State for Manifest Analyzer Screen
+ */
+data class ManifestAnalyzerUiState(
+    val selectedDevice: Device? = null,
+    val packageQuery: String = "",
+    val packages: List<String> = emptyList(),
+    val selectedPackage: String? = null,
+    val analysisResult: ManifestAnalysisResult? = null,
+    val isLoadingPackages: Boolean = false,
+    val isAnalyzing: Boolean = false,
+    val packageFilter: PackageFilter = PackageFilter.THIRD_PARTY,
+    val error: String? = null,
+    val testResult: DeepLinkTestResult? = null
+)
+
+/**
+ * Result of deep link test
+ */
+data class DeepLinkTestResult(
+    val uri: String,
+    val success: Boolean,
+    val message: String
+)
+
+/**
+ * ViewModel for Manifest Analyzer Screen
+ */
+class ManifestAnalyzerViewModel {
+    private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val _uiState = MutableStateFlow(ManifestAnalyzerUiState())
+    val uiState: StateFlow<ManifestAnalyzerUiState> = _uiState.asStateFlow()
+
+    private var searchJob: Job? = null
+
+    /**
+     * Set the selected device
+     */
+    fun setDevice(device: Device?) {
+        _uiState.update {
+            it.copy(
+                selectedDevice = device,
+                packages = emptyList(),
+                selectedPackage = null,
+                analysisResult = null,
+                error = null
+            )
+        }
+
+        if (device != null) {
+            loadPackages()
+        }
+    }
+
+    /**
+     * Update package filter
+     */
+    fun setPackageFilter(filter: PackageFilter) {
+        _uiState.update { it.copy(packageFilter = filter) }
+        loadPackages()
+    }
+
+    /**
+     * Load packages from device
+     */
+    fun loadPackages() {
+        val device = _uiState.value.selectedDevice ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingPackages = true, error = null) }
+
+            AppContainer.getInstalledPackagesUseCase(
+                device.serialNumber,
+                _uiState.value.packageFilter
+            )
+                .onSuccess { packages ->
+                    _uiState.update {
+                        it.copy(
+                            packages = packages,
+                            isLoadingPackages = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoadingPackages = false,
+                            error = error.message
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Update package search query
+     */
+    fun updatePackageQuery(query: String) {
+        _uiState.update { it.copy(packageQuery = query) }
+
+        // Debounce search
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            loadPackages()
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            delay(300) // Debounce
+            searchPackages(query)
+        }
+    }
+
+    private suspend fun searchPackages(query: String) {
+        val device = _uiState.value.selectedDevice ?: return
+
+        _uiState.update { it.copy(isLoadingPackages = true) }
+
+        AppContainer.searchPackagesUseCase(device.serialNumber, query)
+            .onSuccess { packages ->
+                _uiState.update {
+                    it.copy(
+                        packages = packages,
+                        isLoadingPackages = false
+                    )
+                }
+            }
+            .onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoadingPackages = false,
+                        error = error.message
+                    )
+                }
+            }
+    }
+
+    /**
+     * Select a package for analysis
+     */
+    fun selectPackage(packageName: String) {
+        _uiState.update {
+            it.copy(
+                selectedPackage = packageName,
+                analysisResult = null
+            )
+        }
+        analyzePackage(packageName)
+    }
+
+    /**
+     * Analyze a package's manifest
+     */
+    fun analyzePackage(packageName: String) {
+        val device = _uiState.value.selectedDevice ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAnalyzing = true, error = null) }
+
+            AppContainer.analyzeManifestUseCase(device.serialNumber, packageName)
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            analysisResult = result,
+                            isAnalyzing = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isAnalyzing = false,
+                            error = error.message
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Clear analysis result
+     */
+    fun clearAnalysis() {
+        _uiState.update {
+            it.copy(
+                selectedPackage = null,
+                analysisResult = null
+            )
+        }
+    }
+
+    /**
+     * Clear error
+     */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Test a deep link by firing an intent
+     */
+    fun testDeepLink(uri: String) {
+        val device = _uiState.value.selectedDevice ?: return
+
+        viewModelScope.launch {
+            AppContainer.testDeepLinkUseCase(device.serialNumber, uri)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            testResult = DeepLinkTestResult(
+                                uri = uri,
+                                success = true,
+                                message = "Intent fired successfully"
+                            )
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            testResult = DeepLinkTestResult(
+                                uri = uri,
+                                success = false,
+                                message = error.message ?: "Failed to fire intent"
+                            )
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Clear test result
+     */
+    fun clearTestResult() {
+        _uiState.update { it.copy(testResult = null) }
+    }
+
+    /**
+     * Cleanup resources
+     */
+    fun onCleared() {
+        searchJob?.cancel()
+        viewModelScope.cancel()
+    }
+}

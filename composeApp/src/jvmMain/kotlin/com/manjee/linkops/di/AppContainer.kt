@@ -1,0 +1,136 @@
+package com.manjee.linkops.di
+
+import com.manjee.linkops.data.mapper.DeviceMapper
+import com.manjee.linkops.data.parser.AssetLinksParser
+import com.manjee.linkops.data.parser.DumpsysParser
+import com.manjee.linkops.data.parser.GetAppLinksParser
+import com.manjee.linkops.data.parser.ManifestParser
+import com.manjee.linkops.data.repository.AppLinkRepositoryImpl
+import com.manjee.linkops.data.repository.AssetLinksRepositoryImpl
+import com.manjee.linkops.data.repository.DeviceRepositoryImpl
+import com.manjee.linkops.data.repository.ManifestRepositoryImpl
+import com.manjee.linkops.data.strategy.AdbCommandStrategyFactory
+import com.manjee.linkops.domain.repository.AppLinkRepository
+import com.manjee.linkops.domain.repository.AssetLinksRepository
+import com.manjee.linkops.domain.repository.DeviceRepository
+import com.manjee.linkops.domain.repository.ManifestRepository
+import com.manjee.linkops.domain.usecase.applink.FireIntentUseCase
+import com.manjee.linkops.domain.usecase.applink.ForceReverifyUseCase
+import com.manjee.linkops.domain.usecase.applink.GetAppLinksUseCase
+import com.manjee.linkops.domain.usecase.device.DetectDevicesUseCase
+import com.manjee.linkops.domain.usecase.diagnostics.ValidateAssetLinksUseCase
+import com.manjee.linkops.domain.usecase.manifest.AnalyzeManifestUseCase
+import com.manjee.linkops.domain.usecase.manifest.GetInstalledPackagesUseCase
+import com.manjee.linkops.domain.usecase.manifest.SearchPackagesUseCase
+import com.manjee.linkops.domain.usecase.manifest.TestDeepLinkUseCase
+import com.manjee.linkops.infrastructure.adb.AdbBinaryManager
+import com.manjee.linkops.infrastructure.adb.AdbShellExecutor
+import com.manjee.linkops.infrastructure.network.AssetLinksClient
+
+/**
+ * Simple dependency injection container
+ * Provides singleton instances of all dependencies
+ */
+object AppContainer {
+
+    // Infrastructure - ADB
+    val adbBinaryManager: AdbBinaryManager by lazy {
+        AdbBinaryManager()
+    }
+
+    val adbShellExecutor: AdbShellExecutor by lazy {
+        AdbShellExecutor(adbBinaryManager)
+    }
+
+    // Infrastructure - Network
+    private val assetLinksClient: AssetLinksClient by lazy {
+        AssetLinksClient()
+    }
+
+    // Data - Mappers & Parsers
+    private val deviceMapper: DeviceMapper by lazy {
+        DeviceMapper()
+    }
+
+    private val getAppLinksParser: GetAppLinksParser by lazy {
+        GetAppLinksParser()
+    }
+
+    private val dumpsysParser: DumpsysParser by lazy {
+        DumpsysParser()
+    }
+
+    private val assetLinksParser: AssetLinksParser by lazy {
+        AssetLinksParser()
+    }
+
+    private val manifestParser: ManifestParser by lazy {
+        ManifestParser()
+    }
+
+    private val strategyFactory: AdbCommandStrategyFactory by lazy {
+        AdbCommandStrategyFactory()
+    }
+
+    // Repositories
+    val deviceRepository: DeviceRepository by lazy {
+        DeviceRepositoryImpl(adbShellExecutor, deviceMapper)
+    }
+
+    val appLinkRepository: AppLinkRepository by lazy {
+        AppLinkRepositoryImpl(
+            adbShellExecutor,
+            strategyFactory,
+            getAppLinksParser,
+            dumpsysParser
+        )
+    }
+
+    val assetLinksRepository: AssetLinksRepository by lazy {
+        AssetLinksRepositoryImpl(assetLinksClient, assetLinksParser)
+    }
+
+    val manifestRepository: ManifestRepository by lazy {
+        ManifestRepositoryImpl(adbShellExecutor, manifestParser)
+    }
+
+    // UseCases - Device
+    val detectDevicesUseCase: DetectDevicesUseCase by lazy {
+        DetectDevicesUseCase(deviceRepository)
+    }
+
+    // UseCases - App Links
+    val getAppLinksUseCase: GetAppLinksUseCase by lazy {
+        GetAppLinksUseCase(appLinkRepository)
+    }
+
+    val fireIntentUseCase: FireIntentUseCase by lazy {
+        FireIntentUseCase(appLinkRepository)
+    }
+
+    val forceReverifyUseCase: ForceReverifyUseCase by lazy {
+        ForceReverifyUseCase(appLinkRepository)
+    }
+
+    // UseCases - Diagnostics
+    val validateAssetLinksUseCase: ValidateAssetLinksUseCase by lazy {
+        ValidateAssetLinksUseCase(assetLinksRepository)
+    }
+
+    // UseCases - Manifest
+    val analyzeManifestUseCase: AnalyzeManifestUseCase by lazy {
+        AnalyzeManifestUseCase(manifestRepository)
+    }
+
+    val getInstalledPackagesUseCase: GetInstalledPackagesUseCase by lazy {
+        GetInstalledPackagesUseCase(manifestRepository)
+    }
+
+    val searchPackagesUseCase: SearchPackagesUseCase by lazy {
+        SearchPackagesUseCase(manifestRepository)
+    }
+
+    val testDeepLinkUseCase: TestDeepLinkUseCase by lazy {
+        TestDeepLinkUseCase(manifestRepository)
+    }
+}
