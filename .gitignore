@@ -48,6 +48,9 @@ CLAUDE.local.md
 .aider*
 .continue/
 
+# Internal docs (not for public)
+doc/
+
 # Sensitive files
 *.pem
 *.key

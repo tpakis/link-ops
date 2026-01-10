@@ -38,7 +38,20 @@
 
 ## Screenshots
 
-<!-- TODO: Add screenshots -->
+### Dashboard
+Connect devices and monitor App Links verification status at a glance.
+
+![Dashboard](docs/images/dashboard.png)
+
+### Manifest Analyzer
+Analyze deep links from any installed app with domain verification status.
+
+![Manifest Analyzer](docs/images/manifest-analyzer.png)
+
+### AssetLinks Diagnostics
+Validate your `assetlinks.json` configuration and identify issues.
+
+![Diagnostics](docs/images/diagnostics.png)
 
 ## Installation
 
