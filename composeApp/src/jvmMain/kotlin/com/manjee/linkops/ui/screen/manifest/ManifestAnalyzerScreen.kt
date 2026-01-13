@@ -11,6 +11,9 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,9 +24,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manjee.linkops.domain.model.*
+import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.domain.repository.PackageFilter
 import com.manjee.linkops.ui.component.*
 import com.manjee.linkops.ui.theme.LinkOpsColors
+import com.manjee.linkops.ui.util.ExportUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Manifest Analyzer Screen
@@ -38,6 +45,10 @@ fun ManifestAnalyzerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Intent fire dialog state
+    var showIntentDialog by remember { mutableStateOf(false) }
+    var intentDialogUri by remember { mutableStateOf("") }
 
     // Auto-select first device if not selected
     LaunchedEffect(devices) {
@@ -122,11 +133,31 @@ fun ManifestAnalyzerScreen(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp)
             ) {
+                val scope = rememberCoroutineScope()
+
                 AnalysisResultsPanel(
                     result = uiState.analysisResult,
                     isAnalyzing = uiState.isAnalyzing,
                     onClear = { viewModel.clearAnalysis() },
-                    onTestDeepLink = { uri -> viewModel.testDeepLink(uri) }
+                    onTestDeepLink = { uri -> viewModel.testDeepLink(uri) },
+                    onSendDeepLink = { uri ->
+                        intentDialogUri = uri
+                        showIntentDialog = true
+                    },
+                    onExportMarkdown = {
+                        uiState.analysisResult?.let { result ->
+                            scope.launch(Dispatchers.IO) {
+                                ExportUtils.saveMarkdown(result)
+                            }
+                        }
+                    },
+                    onExportPdf = {
+                        uiState.analysisResult?.let { result ->
+                            scope.launch(Dispatchers.IO) {
+                                ExportUtils.savePdf(result)
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -137,6 +168,18 @@ fun ManifestAnalyzerScreen(
         isLoading = uiState.isAnalyzing,
         message = "Analyzing manifest..."
     )
+
+    // Intent fire dialog
+    if (showIntentDialog) {
+        IntentFireDialog(
+            onDismiss = { showIntentDialog = false },
+            onFire = { config ->
+                viewModel.fireIntent(config)
+                showIntentDialog = false
+            },
+            initialUri = intentDialogUri
+        )
+    }
 }
 
 /**
@@ -349,7 +392,10 @@ private fun AnalysisResultsPanel(
     result: ManifestAnalysisResult?,
     isAnalyzing: Boolean,
     onClear: () -> Unit,
-    onTestDeepLink: (String) -> Unit
+    onTestDeepLink: (String) -> Unit,
+    onSendDeepLink: (String) -> Unit,
+    onExportMarkdown: () -> Unit,
+    onExportPdf: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -397,6 +443,14 @@ private fun AnalysisResultsPanel(
                         PackageInfoCard(info)
                     }
 
+                    // Export buttons
+                    item {
+                        ExportButtonsRow(
+                            onExportMarkdown = onExportMarkdown,
+                            onExportPdf = onExportPdf
+                        )
+                    }
+
                     // Domain verification status
                     result.domainVerification?.let { verification ->
                         if (verification.domains.isNotEmpty()) {
@@ -419,7 +473,8 @@ private fun AnalysisResultsPanel(
                                 deepLinks = info.appLinks,
                                 isAppLink = true,
                                 domainVerification = result.domainVerification,
-                                onTestDeepLink = onTestDeepLink
+                                onTestDeepLink = onTestDeepLink,
+                                onSendDeepLink = onSendDeepLink
                             )
                         }
                     }
@@ -432,7 +487,8 @@ private fun AnalysisResultsPanel(
                                 deepLinks = info.customSchemeLinks,
                                 isAppLink = false,
                                 domainVerification = null,
-                                onTestDeepLink = onTestDeepLink
+                                onTestDeepLink = onTestDeepLink,
+                                onSendDeepLink = onSendDeepLink
                             )
                         }
                     }
@@ -448,7 +504,8 @@ private fun AnalysisResultsPanel(
                                 deepLinks = httpLinks,
                                 isAppLink = false,
                                 domainVerification = result.domainVerification,
-                                onTestDeepLink = onTestDeepLink
+                                onTestDeepLink = onTestDeepLink,
+                                onSendDeepLink = onSendDeepLink
                             )
                         }
                     }
@@ -519,6 +576,46 @@ private fun PackageInfoCard(info: ManifestInfo) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Export buttons row
+ */
+@Composable
+private fun ExportButtonsRow(
+    onExportMarkdown: () -> Unit,
+    onExportPdf: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        FilledTonalButton(
+            onClick = onExportMarkdown,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                Icons.Outlined.Description,
+                contentDescription = "Export Markdown",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Export Markdown")
+        }
+
+        FilledTonalButton(
+            onClick = onExportPdf,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                Icons.Outlined.PictureAsPdf,
+                contentDescription = "Export PDF",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Export PDF")
         }
     }
 }
@@ -690,7 +787,8 @@ private fun DeepLinksCard(
     deepLinks: List<DeepLinkInfo>,
     isAppLink: Boolean,
     domainVerification: DomainVerificationResult?,
-    onTestDeepLink: (String) -> Unit
+    onTestDeepLink: (String) -> Unit,
+    onSendDeepLink: (String) -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -721,7 +819,8 @@ private fun DeepLinksCard(
                 DeepLinkItem(
                     link = link,
                     domainVerification = domainVerification,
-                    onTestDeepLink = onTestDeepLink
+                    onTestDeepLink = onTestDeepLink,
+                    onSendDeepLink = onSendDeepLink
                 )
             }
         }
@@ -735,7 +834,8 @@ private fun DeepLinksCard(
 private fun DeepLinkItem(
     link: DeepLinkInfo,
     domainVerification: DomainVerificationResult?,
-    onTestDeepLink: (String) -> Unit
+    onTestDeepLink: (String) -> Unit,
+    onSendDeepLink: (String) -> Unit
 ) {
     // Find verification status for this link's domain
     val verificationStatus = link.host?.let { host ->
@@ -798,7 +898,7 @@ private fun DeepLinkItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Sample URI with Test button
+        // Sample URI with Test and Send buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -816,18 +916,34 @@ private fun DeepLinkItem(
                 overflow = TextOverflow.Ellipsis
             )
 
-            FilledTonalButton(
-                onClick = { onTestDeepLink(link.sampleUri) },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                modifier = Modifier.height(28.dp)
-            ) {
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = "Test",
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Test", style = MaterialTheme.typography.labelSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = { onTestDeepLink(link.sampleUri) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "Test",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Test", style = MaterialTheme.typography.labelSmall)
+                }
+
+                FilledTonalButton(
+                    onClick = { onSendDeepLink(link.sampleUri) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Send,
+                        contentDescription = "Send",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Send", style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
     }
