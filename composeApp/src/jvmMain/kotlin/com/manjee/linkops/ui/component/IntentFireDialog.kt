@@ -30,7 +30,7 @@ fun IntentFireDialog(
     var packageName by remember { mutableStateOf("") }
 
     // Intent flags
-    var newTask by remember { mutableStateOf(true) }
+    var newTask by remember { mutableStateOf(false) }
     var clearTop by remember { mutableStateOf(false) }
     var singleTop by remember { mutableStateOf(false) }
     var clearTask by remember { mutableStateOf(false) }

@@ -2,10 +2,15 @@ package com.manjee.linkops.ui.screen.manifest
 
 import com.manjee.linkops.di.AppContainer
 import com.manjee.linkops.domain.model.Device
+import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.domain.model.ManifestAnalysisResult
 import com.manjee.linkops.domain.repository.PackageFilter
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 
 /**
  * UI State for Manifest Analyzer Screen
@@ -244,6 +249,50 @@ class ManifestAnalyzerViewModel {
      */
     fun clearTestResult() {
         _uiState.update { it.copy(testResult = null) }
+    }
+
+    /**
+     * Fire an intent with full configuration
+     */
+    fun fireIntent(config: IntentConfig) {
+        val device = _uiState.value.selectedDevice ?: return
+
+        viewModelScope.launch {
+            try {
+                AppContainer.fireIntentUseCase(device.serialNumber, config)
+                    .catch { e ->
+                        _uiState.update {
+                            it.copy(
+                                testResult = DeepLinkTestResult(
+                                    uri = config.uri,
+                                    success = false,
+                                    message = e.message ?: "Failed to fire intent"
+                                )
+                            )
+                        }
+                    }
+                    .collect { }
+                _uiState.update {
+                    it.copy(
+                        testResult = DeepLinkTestResult(
+                            uri = config.uri,
+                            success = true,
+                            message = "Intent fired successfully"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        testResult = DeepLinkTestResult(
+                            uri = config.uri,
+                            success = false,
+                            message = e.message ?: "Failed to fire intent"
+                        )
+                    )
+                }
+            }
+        }
     }
 
     /**

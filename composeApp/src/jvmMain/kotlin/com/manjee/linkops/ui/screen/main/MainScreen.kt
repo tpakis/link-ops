@@ -4,7 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,10 +58,7 @@ fun MainScreen(
                 onReverify = { viewModel.forceReverify(it) },
                 onFireIntent = {
                     if (intentUri.isNotBlank()) {
-                        val config = IntentConfig(
-                            uri = intentUri,
-                            flags = setOf(IntentConfig.IntentFlag.ACTIVITY_NEW_TASK)
-                        )
+                        val config = IntentConfig(uri = intentUri)
                         viewModel.fireIntent(config)
                     }
                 },
@@ -161,20 +162,7 @@ private fun ControlPanel(
 
             item { HorizontalDivider() }
 
-            // Section 3: App Links
-            item {
-                AppLinksSection(
-                    appLinks = uiState.appLinks,
-                    selectedDevice = uiState.selectedDevice,
-                    isLoading = uiState.isLoadingAppLinks,
-                    onLoadAppLinks = onLoadAppLinks,
-                    onReverify = onReverify
-                )
-            }
-
-            item { HorizontalDivider() }
-
-            // Section 4: Fire Intent
+            // Section 3: Fire Intent
             item {
                 FireIntentSection(
                     intentUri = intentUri,
@@ -183,6 +171,19 @@ private fun ControlPanel(
                     isFiring = uiState.isFiringIntent,
                     onFireIntent = onFireIntent,
                     onOpenAdvanced = onOpenIntentDialog
+                )
+            }
+
+            item { HorizontalDivider() }
+
+            // Section 4: App Links
+            item {
+                AppLinksSection(
+                    appLinks = uiState.appLinks,
+                    selectedDevice = uiState.selectedDevice,
+                    isLoading = uiState.isLoadingAppLinks,
+                    onLoadAppLinks = onLoadAppLinks,
+                    onReverify = onReverify
                 )
             }
         }
@@ -256,7 +257,7 @@ private fun AdbStatusSection(
 }
 
 /**
- * Devices Section
+ * Devices Section (Collapsible)
  */
 @Composable
 private fun DevicesSection(
@@ -266,17 +267,37 @@ private fun DevicesSection(
     onRefresh: () -> Unit,
     onDeviceSelected: (com.manjee.linkops.domain.model.Device) -> Unit
 ) {
+    var isExpanded by remember { mutableStateOf(true) }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "2. Devices",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                )
+                Text(
+                    text = "2. Devices",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (devices.isNotEmpty()) {
+                    Text(
+                        text = "(${devices.size})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Button(
                 onClick = onRefresh,
@@ -288,20 +309,24 @@ private fun DevicesSection(
             }
         }
 
-        if (devices.isEmpty()) {
-            EmptyState(
-                title = "No devices found",
-                description = "Connect an Android device or start an emulator",
-                icon = "📱"
-            )
-        } else {
+        AnimatedVisibility(visible = isExpanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                devices.forEach { device ->
-                    DeviceCard(
-                        device = device,
-                        isSelected = selectedDevice?.serialNumber == device.serialNumber,
-                        onClick = { onDeviceSelected(device) }
+                if (devices.isEmpty()) {
+                    EmptyState(
+                        title = "No devices found",
+                        description = "Connect an Android device or start an emulator",
+                        icon = "📱"
                     )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        devices.forEach { device ->
+                            DeviceCard(
+                                device = device,
+                                isSelected = selectedDevice?.serialNumber == device.serialNumber,
+                                onClick = { onDeviceSelected(device) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -309,7 +334,7 @@ private fun DevicesSection(
 }
 
 /**
- * App Links Section
+ * App Links Section (Collapsible)
  */
 @Composable
 private fun AppLinksSection(
@@ -319,17 +344,37 @@ private fun AppLinksSection(
     onLoadAppLinks: () -> Unit,
     onReverify: (String) -> Unit
 ) {
+    var isExpanded by remember { mutableStateOf(true) }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "3. App Links",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                )
+                Text(
+                    text = "4. App Links",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (appLinks.isNotEmpty()) {
+                    Text(
+                        text = "(${appLinks.size})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Button(
                 onClick = onLoadAppLinks,
@@ -339,27 +384,31 @@ private fun AppLinksSection(
             }
         }
 
-        if (selectedDevice == null) {
-            Text(
-                text = "Select a device first",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else if (appLinks.isEmpty()) {
-            if (!isLoading) {
-                EmptyState(
-                    title = "No app links found",
-                    description = "Click 'Get App Links' to fetch",
-                    icon = "🔗"
-                )
-            }
-        } else {
+        AnimatedVisibility(visible = isExpanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                appLinks.forEach { appLink ->
-                    AppLinkCard(
-                        appLink = appLink,
-                        onReverify = { onReverify(appLink.packageName) }
+                if (selectedDevice == null) {
+                    Text(
+                        text = "Select a device first",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                } else if (appLinks.isEmpty()) {
+                    if (!isLoading) {
+                        EmptyState(
+                            title = "No app links found",
+                            description = "Click 'Get App Links' to fetch",
+                            icon = "🔗"
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        appLinks.forEach { appLink ->
+                            AppLinkCard(
+                                appLink = appLink,
+                                onReverify = { onReverify(appLink.packageName) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -380,7 +429,7 @@ private fun FireIntentSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "4. Fire Intent",
+            text = "3. Fire Intent",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
