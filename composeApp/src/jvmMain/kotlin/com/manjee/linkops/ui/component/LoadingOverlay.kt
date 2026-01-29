@@ -7,12 +7,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
@@ -110,12 +113,23 @@ fun LoadingIndicator(
 
 /**
  * Empty state placeholder
+ *
+ * @param title Main title text
+ * @param description Optional description text
+ * @param icon Material Icon (takes precedence over iconEmoji)
+ * @param iconEmoji Emoji icon for backwards compatibility
+ * @param actionLabel Optional action button text
+ * @param onAction Optional action button callback
+ * @param modifier Modifier for the component
  */
 @Composable
 fun EmptyState(
     title: String,
     description: String? = null,
-    icon: String = "📭",
+    icon: ImageVector? = null,
+    iconEmoji: String? = "📭",
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -123,10 +137,19 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = icon,
-            style = MaterialTheme.typography.displayMedium
-        )
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (iconEmoji != null) {
+            Text(
+                text = iconEmoji,
+                style = MaterialTheme.typography.displayMedium
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -143,6 +166,13 @@ fun EmptyState(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        if (actionLabel != null && onAction != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            FilledTonalButton(onClick = onAction) {
+                Text(actionLabel)
+            }
         }
     }
 }

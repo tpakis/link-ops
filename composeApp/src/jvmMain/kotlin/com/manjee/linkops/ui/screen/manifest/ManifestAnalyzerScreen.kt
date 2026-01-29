@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -121,6 +122,7 @@ fun ManifestAnalyzerScreen(
                     selectedPackage = uiState.selectedPackage,
                     onPackageSelected = { viewModel.selectPackage(it) },
                     isLoading = uiState.isLoadingPackages,
+                    onLoadPackages = { viewModel.loadPackages() },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -317,6 +319,7 @@ private fun PackageList(
     selectedPackage: String?,
     onPackageSelected: (String) -> Unit,
     isLoading: Boolean,
+    onLoadPackages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (isLoading) {
@@ -334,7 +337,9 @@ private fun PackageList(
             EmptyState(
                 title = "No packages found",
                 description = "Connect a device or try a different filter",
-                icon = "📦"
+                icon = Icons.Default.FolderOpen,
+                actionLabel = "Load Packages",
+                onAction = onLoadPackages
             )
         }
     } else {
@@ -423,7 +428,7 @@ private fun AnalysisResultsPanel(
             EmptyState(
                 title = "No analysis yet",
                 description = "Select a package to analyze its deep links",
-                icon = "📋"
+                icon = Icons.Default.Search
             )
         } else if (result != null) {
             LazyColumn(

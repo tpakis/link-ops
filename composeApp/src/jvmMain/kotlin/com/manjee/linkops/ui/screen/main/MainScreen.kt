@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -315,7 +317,9 @@ private fun DevicesSection(
                     EmptyState(
                         title = "No devices found",
                         description = "Connect an Android device or start an emulator",
-                        icon = "📱"
+                        icon = Icons.Default.PhoneAndroid,
+                        actionLabel = "Refresh Devices",
+                        onAction = onRefresh
                     )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -397,7 +401,9 @@ private fun AppLinksSection(
                         EmptyState(
                             title = "No app links found",
                             description = "Click 'Get App Links' to fetch",
-                            icon = "🔗"
+                            icon = Icons.Default.Link,
+                            actionLabel = "Get App Links",
+                            onAction = onLoadAppLinks
                         )
                     }
                 } else {

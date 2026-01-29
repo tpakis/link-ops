@@ -282,7 +282,7 @@ private fun ResultsPanel(
             EmptyState(
                 title = "No validation results",
                 description = "Enter a domain and click Validate",
-                icon = "🔍"
+                icon = Icons.Default.Search
             )
         } else if (validation != null) {
             LazyColumn(
