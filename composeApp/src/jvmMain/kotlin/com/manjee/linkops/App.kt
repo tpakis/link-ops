@@ -10,7 +10,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.unit.dp
+import com.manjee.linkops.domain.model.ShortcutAction
+import com.manjee.linkops.ui.component.KeyboardShortcutHandler
+import com.manjee.linkops.ui.component.ShortcutsHelpDialog
 import com.manjee.linkops.ui.navigation.*
 import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsScreen
 import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsViewModel
@@ -22,6 +26,12 @@ import com.manjee.linkops.ui.theme.LinkOpsTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
+ * CompositionLocal providing a focus-search event counter.
+ * Screens observe this counter and request focus on their search field when it increments.
+ */
+val LocalSearchFocusTrigger = compositionLocalOf { mutableStateOf(0) }
+
+/**
  * Main Application Composable
  *
  * Entry point for the LinkOps desktop application.
@@ -29,6 +39,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * - LinkOpsTheme for consistent styling
  * - NavigationController for screen navigation
  * - Sidebar navigation for main screens
+ * - Global keyboard shortcuts
  */
 @Composable
 @Preview
@@ -37,6 +48,10 @@ fun App() {
     val mainViewModel = remember { MainViewModel() }
     val diagnosticsViewModel = remember { DiagnosticsViewModel() }
     val manifestAnalyzerViewModel = remember { ManifestAnalyzerViewModel() }
+    val keyboardShortcutHandler = remember { KeyboardShortcutHandler() }
+    val searchFocusTrigger = remember { mutableStateOf(0) }
+
+    var showShortcutsDialog by remember { mutableStateOf(false) }
 
     // Cleanup ViewModels when composable leaves composition
     DisposableEffect(Unit) {
@@ -49,43 +64,88 @@ fun App() {
 
     LinkOpsTheme {
         ProvideNavigationController(navController) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                // Sidebar Navigation
-                NavigationSidebar(
-                    currentScreen = navController.currentScreen,
-                    onNavigate = { screen -> navController.navigateTo(screen) }
-                )
+            CompositionLocalProvider(
+                LocalSearchFocusTrigger provides searchFocusTrigger
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onPreviewKeyEvent { event ->
+                            when (keyboardShortcutHandler.handleKeyEvent(event)) {
+                                ShortcutAction.REFRESH_DEVICES -> {
+                                    mainViewModel.refreshDevices()
+                                    true
+                                }
 
-                // Main Content
-                NavHost(
-                    navController = navController,
-                    modifier = Modifier.weight(1f)
-                ) { screen ->
-                    when (screen) {
-                        Screen.Dashboard -> {
-                            MainScreen(viewModel = mainViewModel)
+                                ShortcutAction.FOCUS_SEARCH -> {
+                                    searchFocusTrigger.value++
+                                    true
+                                }
+
+                                ShortcutAction.CLOSE_PANEL -> {
+                                    navController.navigateBack()
+                                    true
+                                }
+
+                                ShortcutAction.SHOW_SHORTCUTS_HELP -> {
+                                    showShortcutsDialog = true
+                                    true
+                                }
+
+                                null -> false
+                            }
                         }
-                        Screen.DeviceSelection -> {
-                            MainScreen(viewModel = mainViewModel)
-                        }
-                        Screen.Diagnostics -> {
-                            DiagnosticsScreen(viewModel = diagnosticsViewModel)
-                        }
-                        Screen.ManifestAnalyzer -> {
-                            val mainUiState by mainViewModel.uiState.collectAsState()
-                            ManifestAnalyzerScreen(
-                                viewModel = manifestAnalyzerViewModel,
-                                devices = mainUiState.devices
-                            )
-                        }
-                        Screen.Settings -> {
-                            // TODO: Implement SettingsScreen
-                            MainScreen(viewModel = mainViewModel)
-                        }
-                        is Screen.AppLinksDetail -> {
-                            MainScreen(viewModel = mainViewModel)
+                ) {
+                    // Sidebar Navigation
+                    NavigationSidebar(
+                        currentScreen = navController.currentScreen,
+                        onNavigate = { screen -> navController.navigateTo(screen) }
+                    )
+
+                    // Main Content
+                    NavHost(
+                        navController = navController,
+                        modifier = Modifier.weight(1f)
+                    ) { screen ->
+                        when (screen) {
+                            Screen.Dashboard -> {
+                                MainScreen(viewModel = mainViewModel)
+                            }
+
+                            Screen.DeviceSelection -> {
+                                MainScreen(viewModel = mainViewModel)
+                            }
+
+                            Screen.Diagnostics -> {
+                                DiagnosticsScreen(viewModel = diagnosticsViewModel)
+                            }
+
+                            Screen.ManifestAnalyzer -> {
+                                val mainUiState by mainViewModel.uiState.collectAsState()
+                                ManifestAnalyzerScreen(
+                                    viewModel = manifestAnalyzerViewModel,
+                                    devices = mainUiState.devices
+                                )
+                            }
+
+                            Screen.Settings -> {
+                                // TODO: Implement SettingsScreen
+                                MainScreen(viewModel = mainViewModel)
+                            }
+
+                            is Screen.AppLinksDetail -> {
+                                MainScreen(viewModel = mainViewModel)
+                            }
                         }
                     }
+                }
+
+                // Shortcuts help dialog
+                if (showShortcutsDialog) {
+                    ShortcutsHelpDialog(
+                        shortcuts = KeyboardShortcutHandler.allShortcuts(),
+                        onDismiss = { showShortcutsDialog = false }
+                    )
                 }
             }
         }
