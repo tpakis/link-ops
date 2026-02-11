@@ -16,8 +16,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.manjee.linkops.LocalSearchFocusTrigger
 import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.ui.component.*
 import com.manjee.linkops.ui.theme.LinkOpsColors
@@ -440,12 +443,23 @@ private fun FireIntentSection(
             fontWeight = FontWeight.SemiBold
         )
 
+        val focusRequester = remember { FocusRequester() }
+        val searchFocusTrigger by LocalSearchFocusTrigger.current
+
+        LaunchedEffect(searchFocusTrigger) {
+            if (searchFocusTrigger > 0) {
+                focusRequester.requestFocus()
+            }
+        }
+
         OutlinedTextField(
             value = intentUri,
             onValueChange = onIntentUriChange,
             label = { Text("URI") },
             placeholder = { Text("myapp://product/123 or https://example.com/path") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
             singleLine = true,
             enabled = selectedDevice != null
         )

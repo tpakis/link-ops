@@ -19,11 +19,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.manjee.linkops.LocalSearchFocusTrigger
 import com.manjee.linkops.domain.model.*
 import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.domain.repository.PackageFilter
@@ -268,12 +271,23 @@ private fun PackageSearchSection(
             }
         }
 
+        val focusRequester = remember { FocusRequester() }
+        val searchFocusTrigger by LocalSearchFocusTrigger.current
+
+        LaunchedEffect(searchFocusTrigger) {
+            if (searchFocusTrigger > 0) {
+                focusRequester.requestFocus()
+            }
+        }
+
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             label = { Text("Search packages") },
             placeholder = { Text("com.example...") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
             singleLine = true,
             enabled = enabled,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
