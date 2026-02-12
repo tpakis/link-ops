@@ -32,6 +32,11 @@ sealed class Screen(val route: String, val title: String) {
     data object ManifestAnalyzer : Screen("manifest_analyzer", "Manifest Analyzer")
 
     /**
+     * Verification deep dive screen - for deep verification analysis
+     */
+    data object VerificationDeepDive : Screen("verification_deep_dive", "Verification Deep Dive")
+
+    /**
      * Settings screen
      */
     data object Settings : Screen("settings", "Settings")

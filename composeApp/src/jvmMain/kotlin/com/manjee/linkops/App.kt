@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,6 +19,8 @@ import com.manjee.linkops.ui.component.ShortcutsHelpDialog
 import com.manjee.linkops.ui.navigation.*
 import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsScreen
 import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsViewModel
+import com.manjee.linkops.ui.screen.diagnostics.VerificationDeepDiveScreen
+import com.manjee.linkops.ui.screen.diagnostics.VerificationDeepDiveViewModel
 import com.manjee.linkops.ui.screen.main.MainScreen
 import com.manjee.linkops.ui.screen.main.MainViewModel
 import com.manjee.linkops.ui.screen.manifest.ManifestAnalyzerScreen
@@ -48,6 +51,7 @@ fun App() {
     val mainViewModel = remember { MainViewModel() }
     val diagnosticsViewModel = remember { DiagnosticsViewModel() }
     val manifestAnalyzerViewModel = remember { ManifestAnalyzerViewModel() }
+    val verificationDeepDiveViewModel = remember { VerificationDeepDiveViewModel() }
     val keyboardShortcutHandler = remember { KeyboardShortcutHandler() }
     val searchFocusTrigger = remember { mutableStateOf(0) }
 
@@ -59,6 +63,7 @@ fun App() {
             mainViewModel.onCleared()
             diagnosticsViewModel.onCleared()
             manifestAnalyzerViewModel.onCleared()
+            verificationDeepDiveViewModel.onCleared()
         }
     }
 
@@ -128,6 +133,14 @@ fun App() {
                                 )
                             }
 
+                            Screen.VerificationDeepDive -> {
+                                val mainUiState by mainViewModel.uiState.collectAsState()
+                                VerificationDeepDiveScreen(
+                                    viewModel = verificationDeepDiveViewModel,
+                                    devices = mainUiState.devices
+                                )
+                            }
+
                             Screen.Settings -> {
                                 // TODO: Implement SettingsScreen
                                 MainScreen(viewModel = mainViewModel)
@@ -180,6 +193,13 @@ private fun NavigationSidebar(
             label = { Text("Diagnostics") },
             selected = currentScreen == Screen.Diagnostics,
             onClick = { onNavigate(Screen.Diagnostics) }
+        )
+
+        NavigationRailItem(
+            icon = { Icon(Icons.Default.VerifiedUser, contentDescription = "Deep Dive") },
+            label = { Text("Deep Dive") },
+            selected = currentScreen == Screen.VerificationDeepDive,
+            onClick = { onNavigate(Screen.VerificationDeepDive) }
         )
 
         NavigationRailItem(

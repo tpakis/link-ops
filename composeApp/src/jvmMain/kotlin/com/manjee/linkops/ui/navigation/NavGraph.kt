@@ -119,4 +119,5 @@ fun ProvideNavigationController(
 fun NavigationController.navigateToDashboard() = navigateTo(Screen.Dashboard)
 fun NavigationController.navigateToDeviceSelection() = navigateTo(Screen.DeviceSelection)
 fun NavigationController.navigateToDiagnostics() = navigateTo(Screen.Diagnostics)
+fun NavigationController.navigateToVerificationDeepDive() = navigateTo(Screen.VerificationDeepDive)
 fun NavigationController.navigateToSettings() = navigateTo(Screen.Settings)

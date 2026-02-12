@@ -1,5 +1,7 @@
 package com.manjee.linkops.di
 
+import com.manjee.linkops.data.analyzer.CertificateFingerprintComparator
+import com.manjee.linkops.data.analyzer.VerificationFailureAnalyzer
 import com.manjee.linkops.data.mapper.DeviceMapper
 import com.manjee.linkops.data.parser.AssetLinksParser
 import com.manjee.linkops.data.parser.DumpsysParser
@@ -9,15 +11,18 @@ import com.manjee.linkops.data.repository.AppLinkRepositoryImpl
 import com.manjee.linkops.data.repository.AssetLinksRepositoryImpl
 import com.manjee.linkops.data.repository.DeviceRepositoryImpl
 import com.manjee.linkops.data.repository.ManifestRepositoryImpl
+import com.manjee.linkops.data.repository.VerificationDiagnosticsRepositoryImpl
 import com.manjee.linkops.data.strategy.AdbCommandStrategyFactory
 import com.manjee.linkops.domain.repository.AppLinkRepository
 import com.manjee.linkops.domain.repository.AssetLinksRepository
 import com.manjee.linkops.domain.repository.DeviceRepository
 import com.manjee.linkops.domain.repository.ManifestRepository
+import com.manjee.linkops.domain.repository.VerificationDiagnosticsRepository
 import com.manjee.linkops.domain.usecase.applink.FireIntentUseCase
 import com.manjee.linkops.domain.usecase.applink.ForceReverifyUseCase
 import com.manjee.linkops.domain.usecase.applink.GetAppLinksUseCase
 import com.manjee.linkops.domain.usecase.device.DetectDevicesUseCase
+import com.manjee.linkops.domain.usecase.diagnostics.AnalyzeVerificationUseCase
 import com.manjee.linkops.domain.usecase.diagnostics.ValidateAssetLinksUseCase
 import com.manjee.linkops.domain.usecase.manifest.AnalyzeManifestUseCase
 import com.manjee.linkops.domain.usecase.manifest.GetInstalledPackagesUseCase
@@ -68,8 +73,18 @@ object AppContainer {
         ManifestParser()
     }
 
+    // Data - Strategy
     private val strategyFactory: AdbCommandStrategyFactory by lazy {
         AdbCommandStrategyFactory()
+    }
+
+    // Data - Analyzers
+    private val certificateFingerprintComparator: CertificateFingerprintComparator by lazy {
+        CertificateFingerprintComparator()
+    }
+
+    private val verificationFailureAnalyzer: VerificationFailureAnalyzer by lazy {
+        VerificationFailureAnalyzer()
     }
 
     // Repositories
@@ -94,6 +109,18 @@ object AppContainer {
         ManifestRepositoryImpl(adbShellExecutor, manifestParser)
     }
 
+    val verificationDiagnosticsRepository: VerificationDiagnosticsRepository by lazy {
+        VerificationDiagnosticsRepositoryImpl(
+            adbExecutor = adbShellExecutor,
+            strategyFactory = strategyFactory,
+            getAppLinksParser = getAppLinksParser,
+            dumpsysParser = dumpsysParser,
+            assetLinksRepository = assetLinksRepository,
+            fingerprintComparator = certificateFingerprintComparator,
+            failureAnalyzer = verificationFailureAnalyzer
+        )
+    }
+
     // UseCases - Device
     val detectDevicesUseCase: DetectDevicesUseCase by lazy {
         DetectDevicesUseCase(deviceRepository)
@@ -115,6 +142,10 @@ object AppContainer {
     // UseCases - Diagnostics
     val validateAssetLinksUseCase: ValidateAssetLinksUseCase by lazy {
         ValidateAssetLinksUseCase(assetLinksRepository)
+    }
+
+    val analyzeVerificationUseCase: AnalyzeVerificationUseCase by lazy {
+        AnalyzeVerificationUseCase(verificationDiagnosticsRepository)
     }
 
     // UseCases - Manifest
