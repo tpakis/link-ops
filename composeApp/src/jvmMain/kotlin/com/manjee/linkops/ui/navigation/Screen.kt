@@ -37,6 +37,11 @@ sealed class Screen(val route: String, val title: String) {
     data object VerificationDeepDive : Screen("verification_deep_dive", "Verification Deep Dive")
 
     /**
+     * Log streamer screen - for real-time logcat streaming with deep link filtering
+     */
+    data object LogStream : Screen("log_stream", "Log Streamer")
+
+    /**
      * Settings screen
      */
     data object Settings : Screen("settings", "Settings")
@@ -48,7 +53,9 @@ sealed class Screen(val route: String, val title: String) {
         fun mainScreens(): List<Screen> = listOf(
             Dashboard,
             Diagnostics,
+            VerificationDeepDive,
             ManifestAnalyzer,
+            LogStream,
             Settings
         )
     }
