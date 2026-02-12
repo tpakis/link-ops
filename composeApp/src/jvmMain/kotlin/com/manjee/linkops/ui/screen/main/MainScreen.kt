@@ -9,8 +9,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +24,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import com.manjee.linkops.LocalSearchFocusTrigger
+import com.manjee.linkops.domain.model.Favorite
 import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.ui.component.*
 import com.manjee.linkops.ui.theme.LinkOpsColors
@@ -68,6 +76,11 @@ fun MainScreen(
                     }
                 },
                 onOpenIntentDialog = { showIntentDialog = true },
+                onFireFavorite = { uri ->
+                    intentUri = uri
+                    viewModel.fireFavorite(uri)
+                },
+                onRemoveFavorite = { id -> viewModel.removeFavorite(id) },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
@@ -124,6 +137,8 @@ private fun ControlPanel(
     onReverify: (String) -> Unit,
     onFireIntent: () -> Unit,
     onOpenIntentDialog: () -> Unit,
+    onFireFavorite: (String) -> Unit,
+    onRemoveFavorite: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -177,6 +192,20 @@ private fun ControlPanel(
                     onFireIntent = onFireIntent,
                     onOpenAdvanced = onOpenIntentDialog
                 )
+            }
+
+            // Section: Favorites (shown only if there are favorites)
+            if (uiState.favorites.isNotEmpty()) {
+                item { HorizontalDivider() }
+
+                item {
+                    FavoritesSection(
+                        favorites = uiState.favorites,
+                        selectedDevice = uiState.selectedDevice,
+                        onFireFavorite = onFireFavorite,
+                        onRemoveFavorite = onRemoveFavorite
+                    )
+                }
             }
 
             item { HorizontalDivider() }
@@ -479,6 +508,139 @@ private fun FireIntentSection(
                 enabled = selectedDevice != null
             ) {
                 Text("Advanced...")
+            }
+        }
+    }
+}
+
+/**
+ * Favorites Section (Collapsible)
+ */
+@Composable
+private fun FavoritesSection(
+    favorites: List<Favorite>,
+    selectedDevice: com.manjee.linkops.domain.model.Device?,
+    onFireFavorite: (String) -> Unit,
+    onRemoveFavorite: (String) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(true) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                )
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = LinkOpsColors.Error,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "Favorites",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "(${favorites.size})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        AnimatedVisibility(visible = isExpanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                favorites.forEach { favorite ->
+                    FavoriteItem(
+                        favorite = favorite,
+                        hasDevice = selectedDevice != null,
+                        onFire = { onFireFavorite(favorite.uri) },
+                        onRemove = { onRemoveFavorite(favorite.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Individual favorite item card
+ */
+@Composable
+private fun FavoriteItem(
+    favorite: Favorite,
+    hasDevice: Boolean,
+    onFire: () -> Unit,
+    onRemove: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = favorite.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = favorite.uri,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    onClick = onFire,
+                    enabled = hasDevice,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "Fire intent",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Remove favorite",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }

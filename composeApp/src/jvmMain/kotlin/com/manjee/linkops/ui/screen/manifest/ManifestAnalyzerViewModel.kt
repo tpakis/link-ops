@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 
 /**
@@ -25,7 +26,8 @@ data class ManifestAnalyzerUiState(
     val isAnalyzing: Boolean = false,
     val packageFilter: PackageFilter = PackageFilter.THIRD_PARTY,
     val error: String? = null,
-    val testResult: DeepLinkTestResult? = null
+    val testResult: DeepLinkTestResult? = null,
+    val favoriteUris: Set<String> = emptySet()
 )
 
 /**
@@ -47,6 +49,19 @@ class ManifestAnalyzerViewModel {
     val uiState: StateFlow<ManifestAnalyzerUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+
+    init {
+        observeFavorites()
+    }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            AppContainer.observeFavoritesUseCase()
+                .collect { favorites ->
+                    _uiState.update { it.copy(favoriteUris = favorites.map { f -> f.uri }.toSet()) }
+                }
+        }
+    }
 
     /**
      * Set the selected device
@@ -291,6 +306,23 @@ class ManifestAnalyzerViewModel {
                         )
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Toggle favorite status for a deep link URI
+     */
+    fun toggleFavorite(uri: String, name: String) {
+        viewModelScope.launch {
+            if (_uiState.value.favoriteUris.contains(uri)) {
+                val favorites = AppContainer.observeFavoritesUseCase().first()
+                val favorite = favorites.find { it.uri == uri }
+                if (favorite != null) {
+                    AppContainer.removeFavoriteUseCase(favorite.id)
+                }
+            } else {
+                AppContainer.addFavoriteUseCase(uri, name)
             }
         }
     }
