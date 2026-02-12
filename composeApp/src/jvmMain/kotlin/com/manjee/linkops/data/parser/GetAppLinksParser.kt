@@ -11,7 +11,7 @@ import com.manjee.linkops.domain.model.VerificationState
  * ```
  * com.example.app:
  *   ID: 12345678-1234-1234-1234-123456789012
- *   Signatures: [AB:CD:EF:...]
+ *   Signatures: [AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89]
  *   Domain verification state:
  *     example.com: verified
  *     test.example.com: none
@@ -22,6 +22,7 @@ class GetAppLinksParser {
     fun parse(output: String): List<AppLink> {
         val appLinks = mutableListOf<AppLink>()
         var currentPackage: String? = null
+        var currentSignature: String? = null
         val currentDomains = mutableListOf<DomainVerification>()
         var inDomainSection = false
 
@@ -30,10 +31,17 @@ class GetAppLinksParser {
                 // Detect package name (e.g., "com.example.app:")
                 isPackageLine(line) -> {
                     // Save previous package if exists
-                    saveCurrentPackage(currentPackage, currentDomains, appLinks)
+                    saveCurrentPackage(currentPackage, currentSignature, currentDomains, appLinks)
 
                     currentPackage = line.trim().removeSuffix(":")
+                    currentSignature = null
                     currentDomains.clear()
+                    inDomainSection = false
+                }
+
+                // Extract Signatures field
+                line.trim().startsWith("Signatures:") -> {
+                    currentSignature = parseSignatures(line)
                     inDomainSection = false
                 }
 
@@ -55,7 +63,7 @@ class GetAppLinksParser {
         }
 
         // Save last package
-        saveCurrentPackage(currentPackage, currentDomains, appLinks)
+        saveCurrentPackage(currentPackage, currentSignature, currentDomains, appLinks)
 
         return appLinks
     }
@@ -72,6 +80,23 @@ class GetAppLinksParser {
                 trimmed.startsWith("Signatures:") ||
                 trimmed.startsWith("User") ||
                 trimmed.isEmpty()
+    }
+
+    /**
+     * Extract SHA256 fingerprint from Signatures line
+     *
+     * Input format: "  Signatures: [AB:CD:EF:...]"
+     * Returns the fingerprint string without brackets, or null if not parseable
+     */
+    private fun parseSignatures(line: String): String? {
+        val value = line.trim().substringAfter("Signatures:").trim()
+        if (value.isEmpty()) return null
+
+        // Remove brackets
+        val cleaned = value.removePrefix("[").removeSuffix("]").trim()
+        if (cleaned.isEmpty()) return null
+
+        return cleaned
     }
 
     private fun parseDomainLine(line: String): DomainVerification? {
@@ -100,11 +125,17 @@ class GetAppLinksParser {
 
     private fun saveCurrentPackage(
         packageName: String?,
+        signature: String?,
         domains: List<DomainVerification>,
         appLinks: MutableList<AppLink>
     ) {
         if (packageName != null && domains.isNotEmpty()) {
-            appLinks.add(AppLink(packageName, domains.toList()))
+            // Attach the package-level signature to each domain
+            val domainsWithFingerprint = domains.map { domain ->
+                if (signature != null) domain.copy(fingerprint = signature)
+                else domain
+            }
+            appLinks.add(AppLink(packageName, domainsWithFingerprint))
         }
     }
 }
