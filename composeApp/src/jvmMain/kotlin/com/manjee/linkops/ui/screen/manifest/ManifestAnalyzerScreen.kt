@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -143,12 +145,14 @@ fun ManifestAnalyzerScreen(
                 AnalysisResultsPanel(
                     result = uiState.analysisResult,
                     isAnalyzing = uiState.isAnalyzing,
+                    favoriteUris = uiState.favoriteUris,
                     onClear = { viewModel.clearAnalysis() },
                     onTestDeepLink = { uri -> viewModel.testDeepLink(uri) },
                     onSendDeepLink = { uri ->
                         intentDialogUri = uri
                         showIntentDialog = true
                     },
+                    onToggleFavorite = { uri, name -> viewModel.toggleFavorite(uri, name) },
                     onExportMarkdown = {
                         uiState.analysisResult?.let { result ->
                             scope.launch(Dispatchers.IO) {
@@ -410,9 +414,11 @@ private fun PackageItem(
 private fun AnalysisResultsPanel(
     result: ManifestAnalysisResult?,
     isAnalyzing: Boolean,
+    favoriteUris: Set<String>,
     onClear: () -> Unit,
     onTestDeepLink: (String) -> Unit,
     onSendDeepLink: (String) -> Unit,
+    onToggleFavorite: (uri: String, name: String) -> Unit,
     onExportMarkdown: () -> Unit,
     onExportPdf: () -> Unit
 ) {
@@ -492,8 +498,10 @@ private fun AnalysisResultsPanel(
                                 deepLinks = info.appLinks,
                                 isAppLink = true,
                                 domainVerification = result.domainVerification,
+                                favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
-                                onSendDeepLink = onSendDeepLink
+                                onSendDeepLink = onSendDeepLink,
+                                onToggleFavorite = onToggleFavorite
                             )
                         }
                     }
@@ -506,8 +514,10 @@ private fun AnalysisResultsPanel(
                                 deepLinks = info.customSchemeLinks,
                                 isAppLink = false,
                                 domainVerification = null,
+                                favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
-                                onSendDeepLink = onSendDeepLink
+                                onSendDeepLink = onSendDeepLink,
+                                onToggleFavorite = onToggleFavorite
                             )
                         }
                     }
@@ -523,8 +533,10 @@ private fun AnalysisResultsPanel(
                                 deepLinks = httpLinks,
                                 isAppLink = false,
                                 domainVerification = result.domainVerification,
+                                favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
-                                onSendDeepLink = onSendDeepLink
+                                onSendDeepLink = onSendDeepLink,
+                                onToggleFavorite = onToggleFavorite
                             )
                         }
                     }
@@ -806,8 +818,10 @@ private fun DeepLinksCard(
     deepLinks: List<DeepLinkInfo>,
     isAppLink: Boolean,
     domainVerification: DomainVerificationResult?,
+    favoriteUris: Set<String>,
     onTestDeepLink: (String) -> Unit,
-    onSendDeepLink: (String) -> Unit
+    onSendDeepLink: (String) -> Unit,
+    onToggleFavorite: (uri: String, name: String) -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -838,8 +852,10 @@ private fun DeepLinksCard(
                 DeepLinkItem(
                     link = link,
                     domainVerification = domainVerification,
+                    isFavorite = favoriteUris.contains(link.sampleUri),
                     onTestDeepLink = onTestDeepLink,
-                    onSendDeepLink = onSendDeepLink
+                    onSendDeepLink = onSendDeepLink,
+                    onToggleFavorite = { onToggleFavorite(link.sampleUri, link.patternDescription) }
                 )
             }
         }
@@ -853,8 +869,10 @@ private fun DeepLinksCard(
 private fun DeepLinkItem(
     link: DeepLinkInfo,
     domainVerification: DomainVerificationResult?,
+    isFavorite: Boolean,
     onTestDeepLink: (String) -> Unit,
-    onSendDeepLink: (String) -> Unit
+    onSendDeepLink: (String) -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     // Find verification status for this link's domain
     val verificationStatus = link.host?.let { host ->
@@ -935,7 +953,19 @@ private fun DeepLinkItem(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isFavorite) LinkOpsColors.Error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 FilledTonalButton(
                     onClick = { onTestDeepLink(link.sampleUri) },
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),

@@ -4,6 +4,7 @@ import com.manjee.linkops.data.mapper.DeviceMapper
 import com.manjee.linkops.di.AppContainer
 import com.manjee.linkops.domain.model.AppLink
 import com.manjee.linkops.domain.model.Device
+import com.manjee.linkops.domain.model.Favorite
 import com.manjee.linkops.domain.model.IntentConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -19,7 +20,8 @@ data class MainUiState(
     val isLoadingDevices: Boolean = false,
     val isLoadingAppLinks: Boolean = false,
     val isFiringIntent: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val favorites: List<Favorite> = emptyList()
 )
 
 /**
@@ -54,6 +56,16 @@ class MainViewModel {
 
     init {
         checkAdbStatus()
+        observeFavorites()
+    }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            AppContainer.observeFavoritesUseCase()
+                .collect { favorites ->
+                    _uiState.update { it.copy(favorites = favorites) }
+                }
+        }
     }
 
     /**
@@ -298,6 +310,23 @@ class MainViewModel {
                 _uiState.update { it.copy(isFiringIntent = false) }
             }
         }
+    }
+
+    /**
+     * Remove a favorite by ID
+     */
+    fun removeFavorite(id: String) {
+        viewModelScope.launch {
+            AppContainer.removeFavoriteUseCase(id)
+        }
+    }
+
+    /**
+     * Fire an intent from a favorite deep link
+     */
+    fun fireFavorite(uri: String) {
+        val config = IntentConfig(uri = uri)
+        fireIntent(config)
     }
 
     /**
