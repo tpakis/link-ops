@@ -36,6 +36,7 @@ import com.manjee.linkops.domain.usecase.manifest.TestDeepLinkUseCase
 import com.manjee.linkops.infrastructure.adb.AdbBinaryManager
 import com.manjee.linkops.infrastructure.adb.AdbShellExecutor
 import com.manjee.linkops.infrastructure.network.AssetLinksClient
+import com.manjee.linkops.infrastructure.qr.QrCodeGenerator
 
 /**
  * Simple dependency injection container
@@ -50,6 +51,11 @@ object AppContainer {
 
     val adbShellExecutor: AdbShellExecutor by lazy {
         AdbShellExecutor(adbBinaryManager)
+    }
+
+    // Infrastructure - QR
+    val qrCodeGenerator: QrCodeGenerator by lazy {
+        QrCodeGenerator()
     }
 
     // Infrastructure - Network
