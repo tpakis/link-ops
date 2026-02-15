@@ -6,11 +6,13 @@ import com.manjee.linkops.data.mapper.DeviceMapper
 import com.manjee.linkops.data.parser.AssetLinksParser
 import com.manjee.linkops.data.parser.DumpsysParser
 import com.manjee.linkops.data.parser.GetAppLinksParser
+import com.manjee.linkops.data.parser.LogcatParser
 import com.manjee.linkops.data.parser.ManifestParser
 import com.manjee.linkops.data.repository.AppLinkRepositoryImpl
 import com.manjee.linkops.data.repository.AssetLinksRepositoryImpl
 import com.manjee.linkops.data.repository.DeviceRepositoryImpl
 import com.manjee.linkops.data.repository.FavoriteRepositoryImpl
+import com.manjee.linkops.data.repository.LogStreamRepositoryImpl
 import com.manjee.linkops.data.repository.ManifestRepositoryImpl
 import com.manjee.linkops.data.repository.VerificationDiagnosticsRepositoryImpl
 import com.manjee.linkops.data.strategy.AdbCommandStrategyFactory
@@ -18,6 +20,7 @@ import com.manjee.linkops.domain.repository.AppLinkRepository
 import com.manjee.linkops.domain.repository.AssetLinksRepository
 import com.manjee.linkops.domain.repository.DeviceRepository
 import com.manjee.linkops.domain.repository.FavoriteRepository
+import com.manjee.linkops.domain.repository.LogStreamRepository
 import com.manjee.linkops.domain.repository.ManifestRepository
 import com.manjee.linkops.domain.repository.VerificationDiagnosticsRepository
 import com.manjee.linkops.domain.usecase.applink.FireIntentUseCase
@@ -29,6 +32,7 @@ import com.manjee.linkops.domain.usecase.diagnostics.ValidateAssetLinksUseCase
 import com.manjee.linkops.domain.usecase.favorite.AddFavoriteUseCase
 import com.manjee.linkops.domain.usecase.favorite.ObserveFavoritesUseCase
 import com.manjee.linkops.domain.usecase.favorite.RemoveFavoriteUseCase
+import com.manjee.linkops.domain.usecase.logstream.ObserveLogStreamUseCase
 import com.manjee.linkops.domain.usecase.manifest.AnalyzeManifestUseCase
 import com.manjee.linkops.domain.usecase.manifest.GetInstalledPackagesUseCase
 import com.manjee.linkops.domain.usecase.manifest.SearchPackagesUseCase
@@ -76,6 +80,10 @@ object AppContainer {
 
     private val manifestParser: ManifestParser by lazy {
         ManifestParser()
+    }
+
+    private val logcatParser: LogcatParser by lazy {
+        LogcatParser()
     }
 
     // Data - Strategy
@@ -128,6 +136,10 @@ object AppContainer {
 
     val favoriteRepository: FavoriteRepository by lazy {
         FavoriteRepositoryImpl()
+    }
+
+    val logStreamRepository: LogStreamRepository by lazy {
+        LogStreamRepositoryImpl(adbShellExecutor, logcatParser)
     }
 
     // UseCases - Device
@@ -185,5 +197,10 @@ object AppContainer {
 
     val removeFavoriteUseCase: RemoveFavoriteUseCase by lazy {
         RemoveFavoriteUseCase(favoriteRepository)
+    }
+
+    // UseCases - Log Stream
+    val observeLogStreamUseCase: ObserveLogStreamUseCase by lazy {
+        ObserveLogStreamUseCase(logStreamRepository)
     }
 }

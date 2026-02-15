@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,8 @@ import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsScreen
 import com.manjee.linkops.ui.screen.diagnostics.DiagnosticsViewModel
 import com.manjee.linkops.ui.screen.diagnostics.VerificationDeepDiveScreen
 import com.manjee.linkops.ui.screen.diagnostics.VerificationDeepDiveViewModel
+import com.manjee.linkops.ui.screen.logstream.LogStreamScreen
+import com.manjee.linkops.ui.screen.logstream.LogStreamViewModel
 import com.manjee.linkops.ui.screen.main.MainScreen
 import com.manjee.linkops.ui.screen.main.MainViewModel
 import com.manjee.linkops.ui.screen.manifest.ManifestAnalyzerScreen
@@ -52,6 +55,7 @@ fun App() {
     val diagnosticsViewModel = remember { DiagnosticsViewModel() }
     val manifestAnalyzerViewModel = remember { ManifestAnalyzerViewModel() }
     val verificationDeepDiveViewModel = remember { VerificationDeepDiveViewModel() }
+    val logStreamViewModel = remember { LogStreamViewModel() }
     val keyboardShortcutHandler = remember { KeyboardShortcutHandler() }
     val searchFocusTrigger = remember { mutableStateOf(0) }
 
@@ -64,6 +68,7 @@ fun App() {
             diagnosticsViewModel.onCleared()
             manifestAnalyzerViewModel.onCleared()
             verificationDeepDiveViewModel.onCleared()
+            logStreamViewModel.onCleared()
         }
     }
 
@@ -141,6 +146,14 @@ fun App() {
                                 )
                             }
 
+                            Screen.LogStream -> {
+                                val mainUiState by mainViewModel.uiState.collectAsState()
+                                LogStreamScreen(
+                                    viewModel = logStreamViewModel,
+                                    devices = mainUiState.devices
+                                )
+                            }
+
                             Screen.Settings -> {
                                 // TODO: Implement SettingsScreen
                                 MainScreen(viewModel = mainViewModel)
@@ -207,6 +220,13 @@ private fun NavigationSidebar(
             label = { Text("Manifest") },
             selected = currentScreen == Screen.ManifestAnalyzer,
             onClick = { onNavigate(Screen.ManifestAnalyzer) }
+        )
+
+        NavigationRailItem(
+            icon = { Icon(Icons.Default.Terminal, contentDescription = "Log Streamer") },
+            label = { Text("Logcat") },
+            selected = currentScreen == Screen.LogStream,
+            onClick = { onNavigate(Screen.LogStream) }
         )
 
         Spacer(modifier = Modifier.weight(1f))
