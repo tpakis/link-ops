@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.PictureAsPdf
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manjee.linkops.LocalSearchFocusTrigger
+import com.manjee.linkops.di.AppContainer
 import com.manjee.linkops.domain.model.*
 import com.manjee.linkops.domain.model.IntentConfig
 import com.manjee.linkops.domain.repository.PackageFilter
@@ -55,6 +57,10 @@ fun ManifestAnalyzerScreen(
     // Intent fire dialog state
     var showIntentDialog by remember { mutableStateOf(false) }
     var intentDialogUri by remember { mutableStateOf("") }
+
+    // QR code dialog state
+    var showQrDialog by remember { mutableStateOf(false) }
+    var qrDialogUri by remember { mutableStateOf("") }
 
     // Auto-select first device if not selected
     LaunchedEffect(devices) {
@@ -152,6 +158,10 @@ fun ManifestAnalyzerScreen(
                         intentDialogUri = uri
                         showIntentDialog = true
                     },
+                    onShowQr = { uri ->
+                        qrDialogUri = uri
+                        showQrDialog = true
+                    },
                     onToggleFavorite = { uri, name -> viewModel.toggleFavorite(uri, name) },
                     onExportMarkdown = {
                         uiState.analysisResult?.let { result ->
@@ -187,6 +197,15 @@ fun ManifestAnalyzerScreen(
                 showIntentDialog = false
             },
             initialUri = intentDialogUri
+        )
+    }
+
+    // QR code dialog
+    if (showQrDialog && qrDialogUri.isNotBlank()) {
+        QrCodeDialog(
+            uri = qrDialogUri,
+            qrCodeGenerator = AppContainer.qrCodeGenerator,
+            onDismiss = { showQrDialog = false }
         )
     }
 }
@@ -418,6 +437,7 @@ private fun AnalysisResultsPanel(
     onClear: () -> Unit,
     onTestDeepLink: (String) -> Unit,
     onSendDeepLink: (String) -> Unit,
+    onShowQr: (String) -> Unit,
     onToggleFavorite: (uri: String, name: String) -> Unit,
     onExportMarkdown: () -> Unit,
     onExportPdf: () -> Unit
@@ -501,6 +521,7 @@ private fun AnalysisResultsPanel(
                                 favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
                                 onSendDeepLink = onSendDeepLink,
+                                onShowQr = onShowQr,
                                 onToggleFavorite = onToggleFavorite
                             )
                         }
@@ -517,6 +538,7 @@ private fun AnalysisResultsPanel(
                                 favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
                                 onSendDeepLink = onSendDeepLink,
+                                onShowQr = onShowQr,
                                 onToggleFavorite = onToggleFavorite
                             )
                         }
@@ -536,6 +558,7 @@ private fun AnalysisResultsPanel(
                                 favoriteUris = favoriteUris,
                                 onTestDeepLink = onTestDeepLink,
                                 onSendDeepLink = onSendDeepLink,
+                                onShowQr = onShowQr,
                                 onToggleFavorite = onToggleFavorite
                             )
                         }
@@ -821,6 +844,7 @@ private fun DeepLinksCard(
     favoriteUris: Set<String>,
     onTestDeepLink: (String) -> Unit,
     onSendDeepLink: (String) -> Unit,
+    onShowQr: (String) -> Unit,
     onToggleFavorite: (uri: String, name: String) -> Unit
 ) {
     Card(
@@ -855,6 +879,7 @@ private fun DeepLinksCard(
                     isFavorite = favoriteUris.contains(link.sampleUri),
                     onTestDeepLink = onTestDeepLink,
                     onSendDeepLink = onSendDeepLink,
+                    onShowQr = onShowQr,
                     onToggleFavorite = { onToggleFavorite(link.sampleUri, link.patternDescription) }
                 )
             }
@@ -872,6 +897,7 @@ private fun DeepLinkItem(
     isFavorite: Boolean,
     onTestDeepLink: (String) -> Unit,
     onSendDeepLink: (String) -> Unit,
+    onShowQr: (String) -> Unit,
     onToggleFavorite: () -> Unit
 ) {
     // Find verification status for this link's domain
@@ -963,6 +989,17 @@ private fun DeepLinkItem(
                         contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
                         modifier = Modifier.size(16.dp),
                         tint = if (isFavorite) LinkOpsColors.Error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(
+                    onClick = { onShowQr(link.sampleUri) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.QrCode2,
+                        contentDescription = "Generate QR Code",
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
